@@ -4,21 +4,34 @@ import gym
 from gym import spaces
 import numpy as np
 import random
+import pygame
+
 
 class SnakeEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, grid_size=10):
+    def __init__(self, grid_size=10, cell_size=20):
         super().__init__()
         self.grid_size = grid_size
+        self.cell_size = cell_size
+        self.screen_size = grid_size * cell_size
+
+        # Pygame setup
+        pygame.init()
+        self.screen = pygame.display.set_mode((self.screen_size, self.screen_size))
+        pygame.display.set_caption("Snake RL")
+        self.clock = pygame.time.Clock()
+
+        # Gym spaces
         self.action_space = spaces.Discrete(4)  # 0=up,1=right,2=down,3=left
         self.observation_space = spaces.Box(
             low=0, high=2, shape=(grid_size, grid_size), dtype=np.int8
         )
+
+        # initialize game state
         self.reset()
 
     def reset(self):
-        # start snake in center
         mid = self.grid_size // 2
         self.snake = [(mid, mid)]
         self.direction = (0, 1)
@@ -27,8 +40,12 @@ class SnakeEnv(gym.Env):
         return self._get_obs()
 
     def step(self, action):
-        # map action → movement
-        dirs = {0: (-1, 0), 1: (0, 1), 2: (1, 0), 3: (0, -1)}
+        dirs = {
+            0: (-1, 0),
+            1: (0, 1),
+            2: (1, 0),
+            3: (0, -1),
+        }
         new_dir = dirs[action]
         # prevent immediate reverse
         if (new_dir[0] == -self.direction[0] and new_dir[1] == -self.direction[1]):
@@ -75,8 +92,25 @@ class SnakeEnv(gym.Env):
         return obs
 
     def render(self, mode="human"):
-        # optional Pygame rendering
-        pass
+        # clear
+        self.screen.fill((0, 0, 0))
+        # draw food
+        fx, fy = self.food_pos
+        pygame.draw.rect(
+            self.screen,
+            (255, 0, 0),
+            pygame.Rect(fy * self.cell_size, fx * self.cell_size, self.cell_size, self.cell_size),
+        )
+        # draw snake
+        for x, y in self.snake:
+            pygame.draw.rect(
+                self.screen,
+                (0, 255, 0),
+                pygame.Rect(y * self.cell_size, x * self.cell_size, self.cell_size, self.cell_size),
+            )
+        # update display and cap framerate
+        pygame.display.flip()
+        self.clock.tick(10)  # FPS
 
     def close(self):
-        pass
+        pygame.quit()
